@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PageType } from '../types';
+import { useAuth } from '../context/AuthContext';
 import { 
   Cloud, 
   Menu, 
@@ -9,7 +10,10 @@ import {
   ShieldCheck, 
   Layers, 
   ExternalLink,
-  Sparkles
+  Sparkles,
+  LogIn,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -24,9 +28,23 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   onOpenConsultation 
 }) => {
+  const { user, dbUser, signInWithGoogle, signOut } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const handleSignIn = async () => {
+    try {
+      setAuthLoading(true);
+      await signInWithGoogle();
+    } catch (e) {
+      console.error('Sign in error:', e);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -151,6 +169,86 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-3">
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  id="user-profile-menu-btn"
+                  className="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors cursor-pointer"
+                >
+                  {user.photoURL ? (
+                    <img 
+                      src={user.photoURL} 
+                      alt={user.displayName || 'User'} 
+                      referrerPolicy="no-referrer"
+                      className="w-7 h-7 rounded-full object-cover ring-1 ring-purple-600" 
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-purple-700 text-white flex items-center justify-center text-xs font-bold">
+                      {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                  )}
+                  <span className="text-xs font-bold text-slate-800 max-w-[100px] truncate">
+                    {user.displayName?.split(' ')[0] || user.email?.split('@')[0]}
+                  </span>
+                </button>
+
+                <AnimatePresence>
+                  {userDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 text-xs"
+                    >
+                      <div className="px-3 py-2 border-b border-slate-100">
+                        <div className="font-bold text-slate-900 truncate">{user.displayName || 'Enterprise Client'}</div>
+                        <div className="text-[11px] text-slate-500 truncate">{user.email}</div>
+                        <div className="mt-1 inline-block px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-bold uppercase">
+                          Role: {dbUser?.role || 'Client'}
+                        </div>
+                      </div>
+
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            handleNavClick('contact');
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-lg text-slate-700 hover:bg-purple-50 hover:text-purple-900 font-medium cursor-pointer"
+                        >
+                          My Architecture Audits
+                        </button>
+                      </div>
+
+                      <div className="pt-1 border-t border-slate-100">
+                        <button
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            signOut();
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-lg text-rose-600 hover:bg-rose-50 font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <button
+                onClick={handleSignIn}
+                disabled={authLoading}
+                id="header-signin-btn"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors cursor-pointer"
+              >
+                <LogIn className="w-3.5 h-3.5 text-purple-700" />
+                <span>{authLoading ? 'Signing in...' : 'Sign In'}</span>
+              </button>
+            )}
+
             <button
               onClick={() => handleNavClick('contact')}
               id="header-consultation-cta"

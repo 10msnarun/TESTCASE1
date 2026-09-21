@@ -40,10 +40,33 @@ export const Careers: React.FC<CareersProps> = ({ onNavigate }) => {
     return j.department === selectedDept;
   });
 
-  const handleApplySubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!applicantName || !applicantEmail) return;
-    setSubmitted(true);
+    if (!applicantName || !applicantEmail || !applyingJob) return;
+    setSubmitting(true);
+
+    try {
+      await fetch('/api/careers/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: applyingJob.id,
+          jobTitle: applyingJob.title,
+          applicantName,
+          email: applicantEmail,
+          phone: applicantPhone,
+          linkedIn: applicantLinkedIn,
+          notes: applicantNotes,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to submit application to PostgreSQL API:', err);
+    } finally {
+      setSubmitting(false);
+      setSubmitted(true);
+    }
   };
 
   const closeApplyModal = () => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PageType } from './types';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
@@ -118,35 +119,37 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans selection:bg-purple-100 selection:text-purple-900">
-      {/* Top Sticky Navigation */}
-      <Navbar 
-        currentPage={currentPage} 
-        onNavigate={handleNavigate}
-        onOpenConsultation={() => handleNavigate('contact')}
-      />
+    <AuthProvider>
+      <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans selection:bg-purple-100 selection:text-purple-900">
+        {/* Top Sticky Navigation */}
+        <Navbar 
+          currentPage={currentPage} 
+          onNavigate={handleNavigate}
+          onOpenConsultation={() => handleNavigate('contact')}
+        />
 
-      {/* Main Page Content with Page Transition */}
-      <main className="flex-1 w-full overflow-x-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentPage}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="w-full"
-          >
-            {renderCurrentPage()}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+        {/* Main Page Content with Page Transition */}
+        <main className="flex-1 w-full overflow-x-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentPage}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="w-full"
+            >
+              {renderCurrentPage()}
+            </motion.div>
+          </AnimatePresence>
+        </main>
 
-      {/* Corporate Enterprise Footer */}
-      <Footer onNavigate={handleNavigate} />
+        {/* Corporate Enterprise Footer */}
+        <Footer onNavigate={handleNavigate} />
 
-      {/* Interactive WhatsApp Floating Button */}
-      <WhatsAppWidget />
-    </div>
+        {/* Interactive WhatsApp Floating Button */}
+        <WhatsAppWidget />
+      </div>
+    </AuthProvider>
   );
 }

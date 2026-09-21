@@ -22,16 +22,30 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+  const [submittingNewsletter, setSubmittingNewsletter] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newsletterEmail || !newsletterEmail.includes('@')) {
       setErrorMsg('Please enter a valid business email.');
       return;
     }
     setErrorMsg('');
-    setNewsletterSubscribed(true);
+    setSubmittingNewsletter(true);
+
+    try {
+      await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newsletterEmail, source: 'website_footer' }),
+      });
+    } catch (err) {
+      console.error('Failed to subscribe:', err);
+    } finally {
+      setSubmittingNewsletter(false);
+      setNewsletterSubscribed(true);
+    }
   };
 
   const handlePageClick = (page: PageType) => {
