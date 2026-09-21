@@ -1,0 +1,6 @@
+{
+  "name": "LIS Cloud Consulting",
+  "description": "Enterprise AWS & Azure cloud consulting, architecture modernization, DevOps automation, and cost optimization services by certified cloud architects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
