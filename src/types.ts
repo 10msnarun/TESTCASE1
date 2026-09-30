@@ -6,7 +6,10 @@ export type PageType =
   | 'case-studies' 
   | 'pricing' 
   | 'careers' 
-  | 'contact';
+  | 'contact'
+  | 'sign-in'
+  | 'portal'
+  | 'admin';
 
 export interface ServiceItem {
   id: string;

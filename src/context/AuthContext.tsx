@@ -7,7 +7,7 @@ import {
 } from 'firebase/auth';
 import { auth, googleAuthProvider } from '../lib/firebase';
 
-interface DbUser {
+export interface DbUser {
   id: number;
   uid: string;
   email: string;
@@ -22,11 +22,16 @@ interface AuthContextType {
   idToken: string | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithDemoUser: (uid: string) => Promise<DbUser>;
+  signInWithEmail: (email: string, displayName?: string) => Promise<DbUser>;
   signOut: () => Promise<void>;
   syncWithDatabase: (token: string, user: User) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const STORAGE_TOKEN_KEY = 'lis_cloud_auth_token';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -56,20 +61,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshProfile = async () => {
+    if (!idToken) return;
+    try {
+      const res = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDbUser(data.user);
+      }
+    } catch (err) {
+      console.error('Failed to refresh user profile:', err);
+    }
+  };
+
   useEffect(() => {
+    // Initial restoration: check localStorage for saved token
+    const restoreSession = async () => {
+      const savedToken = localStorage.getItem(STORAGE_TOKEN_KEY);
+      if (savedToken) {
+        try {
+          const res = await fetch('/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${savedToken}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setDbUser(data.user);
+            setIdToken(savedToken);
+            // Create a lightweight user representation for UI consistency
+            setUser({
+              uid: data.user.uid,
+              email: data.user.email,
+              displayName: data.user.displayName,
+              photoURL: data.user.photoUrl,
+            } as any);
+          } else {
+            localStorage.removeItem(STORAGE_TOKEN_KEY);
+          }
+        } catch (e) {
+          console.error('Session restoration error:', e);
+        }
+      }
+    };
+
+    restoreSession();
+
+    // Listen to Firebase Auth state
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
       if (currentUser) {
+        setUser(currentUser);
         try {
           const token = await currentUser.getIdToken();
           setIdToken(token);
+          localStorage.setItem(STORAGE_TOKEN_KEY, token);
           await syncWithDatabase(token, currentUser);
         } catch (e) {
           console.error('Error retrieving ID token:', e);
         }
-      } else {
-        setIdToken(null);
-        setDbUser(null);
       }
       setLoading(false);
     });
@@ -82,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const result = await signInWithPopup(auth, googleAuthProvider);
       const token = await result.user.getIdToken();
       setIdToken(token);
+      localStorage.setItem(STORAGE_TOKEN_KEY, token);
       await syncWithDatabase(token, result.user);
     } catch (error: any) {
       console.error('Google Sign-In failed:', error);
@@ -89,9 +143,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithDemoUser = async (uid: string): Promise<DbUser> => {
+    try {
+      const res = await fetch('/api/auth/login-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to sign in as demo user');
+      }
+
+      const data = await res.json();
+      setIdToken(data.token);
+      setDbUser(data.user);
+      localStorage.setItem(STORAGE_TOKEN_KEY, data.token);
+
+      setUser({
+        uid: data.user.uid,
+        email: data.user.email,
+        displayName: data.user.displayName,
+        photoURL: data.user.photoUrl,
+      } as any);
+
+      return data.user;
+    } catch (error: any) {
+      console.error('Sign in with demo user failed:', error);
+      throw error;
+    }
+  };
+
+  const signInWithEmail = async (email: string, displayName?: string): Promise<DbUser> => {
+    try {
+      const res = await fetch('/api/auth/login-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, displayName })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to sign in with email');
+      }
+
+      const data = await res.json();
+      setIdToken(data.token);
+      setDbUser(data.user);
+      localStorage.setItem(STORAGE_TOKEN_KEY, data.token);
+
+      setUser({
+        uid: data.user.uid,
+        email: data.user.email,
+        displayName: data.user.displayName,
+        photoURL: data.user.photoUrl,
+      } as any);
+
+      return data.user;
+    } catch (error: any) {
+      console.error('Email login failed:', error);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth);
+      await firebaseSignOut(auth).catch(() => {});
+      localStorage.removeItem(STORAGE_TOKEN_KEY);
       setUser(null);
       setIdToken(null);
       setDbUser(null);
@@ -107,8 +226,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       idToken,
       loading,
       signInWithGoogle,
+      signInWithDemoUser,
+      signInWithEmail,
       signOut,
-      syncWithDatabase
+      syncWithDatabase,
+      refreshProfile
     }}>
       {children}
     </AuthContext.Provider>
@@ -122,3 +244,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

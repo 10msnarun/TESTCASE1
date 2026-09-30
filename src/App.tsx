@@ -12,6 +12,9 @@ import { CaseStudies } from './pages/CaseStudies';
 import { Pricing } from './pages/Pricing';
 import { Careers } from './pages/Careers';
 import { Contact } from './pages/Contact';
+import { SignIn } from './pages/SignIn';
+import { Portal } from './pages/Portal';
+import { AdminApp } from './admin/AdminApp';
 import { motion, AnimatePresence } from 'motion/react';
 
 const PAGE_METADATA: Record<PageType, { title: string; desc: string }> = {
@@ -46,22 +49,47 @@ const PAGE_METADATA: Record<PageType, { title: string; desc: string }> = {
   contact: {
     title: 'Schedule Architecture Consultation | LIS Cloud Consulting',
     desc: 'Book a 30-minute discovery session with an LIS Principal Solutions Architect. Inquire about audits, migrations, and cost reductions.'
+  },
+  'sign-in': {
+    title: 'Client Sign In & Architecture Portal | LIS Cloud Consulting',
+    desc: 'Sign in to access your enterprise architecture tickets, Cloud SQL database records, Well-Architected reviews, and FinOps dashboards.'
+  },
+  portal: {
+    title: 'Enterprise Architecture & FinOps Portal | LIS Cloud Consulting',
+    desc: 'Manage and review your real-time cloud architecture audit tickets, blueprints, FinOps telemetry, and principal architect pods.'
+  },
+  admin: {
+    title: 'Admin Console & Database Operations | LIS Cloud Consulting',
+    desc: 'Executive management portal for Azure PostgreSQL database, consultation requests, candidate job applications, and subscribers.'
   }
 };
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<PageType>('home');
+  const [currentPage, setCurrentPage] = useState<PageType>(() => {
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.startsWith('/admin') || window.location.hash.startsWith('#admin')) {
+        return 'admin';
+      }
+      const hash = window.location.hash.replace('#', '') as PageType;
+      if (hash && PAGE_METADATA[hash]) {
+        return hash;
+      }
+    }
+    return 'home';
+  });
 
   // Handle URL hash sync on load and changes
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '') as PageType;
-      if (hash && PAGE_METADATA[hash]) {
+      if (window.location.hash.startsWith('#admin') || window.location.pathname.startsWith('/admin')) {
+        setCurrentPage('admin');
+      } else if (hash && PAGE_METADATA[hash]) {
         setCurrentPage(hash);
       }
     };
 
-    if (window.location.hash) {
+    if (window.location.hash || window.location.pathname.startsWith('/admin')) {
       handleHashChange();
     }
 
@@ -95,6 +123,11 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // If in Admin mode, render the separate Admin Dashboard application
+  if (currentPage === 'admin') {
+    return <AdminApp onExitToPublic={() => handleNavigate('home')} />;
+  }
+
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'home':
@@ -113,6 +146,10 @@ export default function App() {
         return <Careers onNavigate={handleNavigate} />;
       case 'contact':
         return <Contact onNavigate={handleNavigate} />;
+      case 'sign-in':
+        return <SignIn onNavigate={handleNavigate} />;
+      case 'portal':
+        return <Portal onNavigate={handleNavigate} />;
       default:
         return <Home onNavigate={handleNavigate} />;
     }

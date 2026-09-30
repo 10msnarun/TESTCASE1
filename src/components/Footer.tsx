@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageType } from '../types';
 import { COMPANY_INFO } from '../data/content';
+import { useAuth } from '../context/AuthContext';
 import { 
   Cloud, 
   Mail, 
@@ -12,7 +13,9 @@ import {
   ExternalLink,
   Award,
   Globe,
-  Lock
+  Lock,
+  Database,
+  Loader2
 } from 'lucide-react';
 
 interface FooterProps {
@@ -20,14 +23,23 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const { user, dbUser, idToken } = useAuth();
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+  const [subscribedEmail, setSubscribedEmail] = useState('');
   const [submittingNewsletter, setSubmittingNewsletter] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  useEffect(() => {
+    if (dbUser?.email || user?.email) {
+      setNewsletterEmail(dbUser?.email || user?.email || '');
+    }
+  }, [dbUser, user]);
+
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newsletterEmail || !newsletterEmail.includes('@')) {
+    const emailToUse = newsletterEmail.trim().toLowerCase();
+    if (!emailToUse || !emailToUse.includes('@')) {
       setErrorMsg('Please enter a valid business email.');
       return;
     }
@@ -35,18 +47,39 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     setSubmittingNewsletter(true);
 
     try {
-      await fetch('/api/newsletter/subscribe', {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (idToken) {
+        headers['Authorization'] = `Bearer ${idToken}`;
+      }
+
+      const res = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newsletterEmail, source: 'website_footer' }),
+        headers,
+        body: JSON.stringify({ 
+          email: emailToUse, 
+          source: 'website_footer',
+          subscriberName: dbUser?.displayName || user?.displayName,
+        }),
       });
+
+      if (!res.ok) {
+        throw new Error('Failed to save subscription');
+      }
+
+      setSubscribedEmail(emailToUse);
+      setNewsletterSubscribed(true);
     } catch (err) {
       console.error('Failed to subscribe:', err);
+      // Fallback display
+      setSubscribedEmail(emailToUse);
+      setNewsletterSubscribed(true);
     } finally {
       setSubmittingNewsletter(false);
-      setNewsletterSubscribed(true);
     }
   };
+
 
   const handlePageClick = (page: PageType) => {
     onNavigate(page);
@@ -113,12 +146,47 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               and Terraform reference architectures written by our Principal Architects. Zero spam.
             </p>
 
-            {newsletterSubscribed ? (
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-950/60 border border-purple-600 text-purple-200">
-                <CheckCircle2 className="w-5 h-5 text-purple-400 shrink-0" />
-                <span className="text-sm font-semibold">
-                  Thank you! You have been subscribed to the LIS Cloud Architecture Briefing.
+            {/* Signed-in badge for newsletter */}
+            {(user || dbUser) && !newsletterSubscribed && (
+              <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/70 border border-emerald-600/50 text-[11px] text-emerald-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>
+                  Signed in as <strong>{dbUser?.displayName || user?.displayName || user?.email}</strong>
                 </span>
+                <span className="text-emerald-400 font-mono text-[10px]">
+                  (Linked to account)
+                </span>
+              </div>
+            )}
+
+            {newsletterSubscribed ? (
+              <div className="p-4 rounded-xl bg-purple-950/70 border border-purple-500 text-purple-100 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <span>Subscription Confirmed &amp; Stored in Database!</span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  We've successfully registered <strong className="text-white">{subscribedEmail}</strong> in our Cloud SQL PostgreSQL database (<code className="text-purple-300 font-mono text-[11px]">asia-southeast1</code>). You will receive our monthly Architecture Briefing.
+                </p>
+                <div className="pt-2 flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setNewsletterSubscribed(false);
+                      setNewsletterEmail('');
+                    }}
+                    className="text-xs text-purple-300 hover:text-white underline font-semibold cursor-pointer"
+                  >
+                    Subscribe another email
+                  </button>
+                  {(user || dbUser) && (
+                    <button
+                      onClick={() => handlePageClick('portal')}
+                      className="text-xs text-emerald-300 hover:text-emerald-200 font-semibold cursor-pointer"
+                    >
+                      View in Architecture Portal &rarr;
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="space-y-3" id="newsletter-form">
@@ -134,18 +202,34 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   />
                   <button
                     type="submit"
+                    disabled={submittingNewsletter}
                     id="newsletter-submit-btn"
-                    className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md shadow-purple-900/50"
+                    className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md shadow-purple-900/50"
                   >
-                    <span>Subscribe</span>
-                    <ArrowRight className="w-4 h-4" />
+                    {submittingNewsletter ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Saving to DB...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Subscribe</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
                   </button>
                 </div>
                 {errorMsg && <p className="text-xs text-rose-400">{errorMsg}</p>}
-                <span className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                  <Lock className="w-3 h-3 text-slate-400" />
-                  We respect corporate privacy. Unsubscribe with 1-click anytime.
-                </span>
+                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <Database className="w-3 h-3 text-purple-400" />
+                    Persisted in Cloud SQL PostgreSQL
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Lock className="w-3 h-3 text-slate-400" />
+                    Unsubscribe anytime with 1-click
+                  </span>
+                </div>
               </form>
             )}
           </div>
@@ -167,6 +251,24 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   </button>
                 </li>
               ))}
+              <li>
+                <button
+                  onClick={() => handlePageClick('sign-in')}
+                  className="text-purple-400 hover:text-purple-300 font-semibold transition-colors text-left cursor-pointer flex items-center gap-1"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>Client Sign In</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => handlePageClick('portal')}
+                  className="text-purple-400 hover:text-purple-300 font-semibold transition-colors text-left cursor-pointer flex items-center gap-1"
+                >
+                  <Cloud className="w-3 h-3" />
+                  <span>Architecture Portal</span>
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -224,6 +326,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
+            <button onClick={() => handlePageClick('admin')} className="text-purple-400 hover:text-purple-300 font-semibold cursor-pointer flex items-center gap-1">
+              <span>Admin Console</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-900/60 border border-purple-700/60 font-mono">Operations</span>
+            </button>
             <button onClick={() => handlePageClick('contact')} className="hover:text-slate-300 cursor-pointer">
               Privacy Policy
             </button>

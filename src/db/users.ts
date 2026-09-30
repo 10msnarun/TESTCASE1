@@ -37,3 +37,23 @@ export async function getUserByUid(uid: string) {
     throw new Error("Database query failed.", { cause: error });
   }
 }
+
+export async function getUserByEmail(email: string) {
+  try {
+    const results = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1);
+    return results[0] || null;
+  } catch (error) {
+    console.error("Failed to query user by email:", error);
+    throw new Error("Database query failed.", { cause: error });
+  }
+}
+
+export async function getAllUsers() {
+  try {
+    return await db.select().from(users);
+  } catch (error) {
+    console.error("Failed to list users:", error);
+    throw new Error("Database query failed.", { cause: error });
+  }
+}
+

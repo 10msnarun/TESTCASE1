@@ -46,6 +46,23 @@ export const jobApplications = pgTable('job_applications', {
 export const newsletterSubscriptions = pgTable('newsletter_subscriptions', {
   id: serial('id').primaryKey(),
   email: text('email').notNull().unique(),
+  subscriberName: text('subscriber_name'),
+  userId: text('user_id'), // Optional link to Firebase UID if authenticated
   source: text('source').default('footer').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// General & Live Chat Messages sent from anywhere across the website
+export const messages = pgTable('messages', {
+  id: serial('id').primaryKey(),
+  messageId: text('message_id').notNull().unique(),
+  senderName: text('sender_name').notNull(),
+  senderEmail: text('sender_email').notNull(),
+  senderPhone: text('sender_phone'),
+  content: text('content').notNull(),
+  channel: text('channel').default('quick_chat').notNull(), // 'quick_chat' | 'contact_form' | 'portal'
+  userId: text('user_id'), // Optional link to Firebase UID if authenticated
+  status: text('status').default('received').notNull(), // 'received' | 'in_review' | 'replied'
+  createdAt: timestamp('created_at').defaultNow(),
+});
+

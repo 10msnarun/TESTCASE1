@@ -24,10 +24,10 @@ interface ContactProps {
 }
 
 export const Contact: React.FC<ContactProps> = ({ onNavigate }) => {
-  const { user, idToken } = useAuth();
+  const { user, dbUser, idToken } = useAuth();
   const [formData, setFormData] = useState<ContactFormData>({
-    fullName: user?.displayName || '',
-    email: user?.email || '',
+    fullName: dbUser?.displayName || user?.displayName || '',
+    email: dbUser?.email || user?.email || '',
     company: '',
     phone: '',
     cloudPlatform: 'AWS',
@@ -35,6 +35,16 @@ export const Contact: React.FC<ContactProps> = ({ onNavigate }) => {
     serviceType: 'Free Cloud Architecture & Security Audit',
     message: ''
   });
+
+  React.useEffect(() => {
+    if (dbUser || user) {
+      setFormData(prev => ({
+        ...prev,
+        fullName: prev.fullName || dbUser?.displayName || user?.displayName || '',
+        email: prev.email || dbUser?.email || user?.email || '',
+      }));
+    }
+  }, [dbUser, user]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -135,6 +145,28 @@ export const Contact: React.FC<ContactProps> = ({ onNavigate }) => {
                 </span>
               </div>
 
+              {/* Signed-in Session Banner */}
+              {(user || dbUser) && (
+                <div className="mb-6 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs text-emerald-950">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span>
+                      Signed in as <strong>{dbUser?.displayName || user?.displayName}</strong> ({dbUser?.email || user?.email}). Messages are linked to your PostgreSQL client account.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('portal')}
+                    className="text-xs font-bold text-purple-700 hover:text-purple-900 underline shrink-0 cursor-pointer text-left"
+                  >
+                    View Portal &rarr;
+                  </button>
+                </div>
+              )}
+
               {isSuccess ? (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -147,25 +179,38 @@ export const Contact: React.FC<ContactProps> = ({ onNavigate }) => {
                   <h4 className="text-2xl font-black text-purple-950">
                     Consultation Request Confirmed!
                   </h4>
-                  <div className="text-xs text-purple-800 font-mono bg-white inline-block px-3 py-1 rounded-lg border border-purple-200">
-                    Reference ID: <strong className="text-purple-900">{ticketId}</strong>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white border border-purple-200 text-xs font-mono font-bold text-purple-800">
+                    <span>Reference ID:</span>
+                    <strong className="text-purple-900">{ticketId}</strong>
+                    <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold">
+                      Saved to PostgreSQL
+                    </span>
                   </div>
                   <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                    Thank you, <strong className="text-slate-900">{formData.fullName}</strong>. Your inquiry has been routed to our Principal Cloud Architecture group. An invite with meeting options and technical pre-flight notes will be delivered to <strong className="text-slate-900">{formData.email}</strong> shortly.
+                    Thank you, <strong className="text-slate-900">{formData.fullName}</strong>. Your inquiry has been stored in our Cloud SQL PostgreSQL database (<code className="text-purple-700 font-mono text-xs">asia-southeast1</code>). An invite with meeting options and technical pre-flight notes will be delivered to <strong className="text-slate-900">{formData.email}</strong> shortly.
                   </p>
 
                   <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    {(user || dbUser) ? (
+                      <button
+                        onClick={() => onNavigate('portal')}
+                        className="px-6 py-2.5 rounded-xl bg-purple-700 text-white font-bold text-xs hover:bg-purple-800 transition-colors cursor-pointer"
+                      >
+                        View in Architecture Portal
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onNavigate('sign-in')}
+                        className="px-6 py-2.5 rounded-xl bg-purple-700 text-white font-bold text-xs hover:bg-purple-800 transition-colors cursor-pointer"
+                      >
+                        Sign In to Track Ticket
+                      </button>
+                    )}
                     <button
                       onClick={resetForm}
-                      className="px-6 py-2.5 rounded-xl bg-purple-700 text-white font-bold text-xs hover:bg-purple-800 transition-colors cursor-pointer"
-                    >
-                      Submit Another Inquiry
-                    </button>
-                    <button
-                      onClick={() => onNavigate('home')}
                       className="px-6 py-2.5 rounded-xl bg-white text-slate-700 border border-slate-300 font-bold text-xs hover:bg-slate-50 cursor-pointer"
                     >
-                      Return to Home
+                      Submit Another Inquiry
                     </button>
                   </div>
                 </motion.div>
