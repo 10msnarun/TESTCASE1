@@ -1,0 +1,21 @@
+services:
+
+  app:
+    build: .
+    container_name: lis-website
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+
+    environment:
+      SQL_HOST: hotsport2.postgres.database.azure.com
+      SQL_PORT: 5432
+      SQL_USER: lisadmin
+      SQL_PASSWORD: test@123
+      SQL_DB_NAME: postgres
+
+    networks:
+      - lis-network
+
+networks:
+  lis-network:

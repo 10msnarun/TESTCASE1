@@ -1,0 +1,13 @@
+                                           Table "public.newsletter_subscriptions"
+     Column      |            Type             | Collation | Nullable |                       Default                        
+-----------------+-----------------------------+-----------+----------+------------------------------------------------------
+ id              | integer                     |           | not null | nextval('newsletter_subscriptions_id_seq'::regclass)
+ email           | text                        |           | not null | 
+ source          | text                        |           | not null | 'footer'::text
+ created_at      | timestamp without time zone |           |          | now()
+ subscriber_name | text                        |           |          | 
+ user_id         | text                        |           |          | 
+Indexes:
+    "newsletter_subscriptions_pkey" PRIMARY KEY, btree (id)
+    "newsletter_subscriptions_email_unique" UNIQUE CONSTRAINT, btree (email)
+

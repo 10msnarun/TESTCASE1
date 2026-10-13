@@ -15,15 +15,26 @@ export const createPool = () => {
       user: process.env.SQL_USER,
       password: process.env.SQL_PASSWORD,
       database: process.env.SQL_DB_NAME,
+      port: 5432,
+
+      // Azure PostgreSQL SSL connection
+      ssl: {
+        rejectUnauthorized: false,
+      },
+
       max: 10,
       connectionTimeoutMillis: 15000,
     });
 
     // Prevent unhandled pool-level errors from crashing the application
     global._postgresPool.on('error', (err) => {
-      console.error('Unexpected error on idle SQL pool client:', err);
+      console.error(
+        'Unexpected error on idle SQL pool client:',
+        err
+      );
     });
   }
+
   return global._postgresPool;
 };
 
